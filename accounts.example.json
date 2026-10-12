@@ -1,0 +1,10 @@
+{
+  "asOf": "2026-10-02",
+  "timezone": "America/Los_Angeles",
+  "accountManagerId": null,
+  "accounts": {
+    "1001": { "name": "Example Insurance Agency", "brandId": 2001, "budgets": [150, 150, 150, 150, 150, 150, 150] },
+    "1002": { "name": "Weekday Heavy Agency", "brandId": 2002, "budgets": [60, 160, 160, 160, 160, 160, 60] },
+    "1003": { "name": "Paused Agency", "brandId": null, "budgets": [0, 0, 0, 0, 0, 0, 0] }
+  }
+}

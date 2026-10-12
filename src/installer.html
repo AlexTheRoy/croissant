@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget Pace Alerts</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%A5%90%3C%2Ftext%3E%3C%2Fsvg%3E">
+<style>
+:root{color-scheme:light dark;--bg:#f3f4f6;--card:#fff;--ink:#17202a;--ink2:#56616f;--line:#e2e6eb;--accent:#0f6e8c}
+@media(prefers-color-scheme:dark){:root{--bg:#121314;--card:#1c1d20;--ink:#ededee;--ink2:#a6a9ae;--line:#2d2f33;--accent:#4fd1c5}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;padding:32px 16px 64px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--ink2);margin:0 0 24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 18px}
+.card h2{font-size:15px;letter-spacing:.02em;margin:0 0 10px;display:flex;align-items:center;gap:9px}
+.n{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;align-items:center;justify-content:center;flex:none}
+.drag{display:inline-block;background:linear-gradient(180deg,#1b1c1f,#121314);color:#fff;border:1px solid #3e4045;border-radius:10px;padding:11px 20px 11px 16px;font-weight:600;text-decoration:none;font-size:15px;box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:grab}
+.drag:active{cursor:grabbing}
+.drag .ic{margin-right:7px;font-size:17px;vertical-align:-2px}
+.hint{color:var(--ink2);font-size:13.5px;margin-top:9px}
+ol{margin:6px 0 0;padding-left:20px}
+li{margin:5px 0}
+code{background:rgba(127,127,127,.16);padding:1px 6px;border-radius:5px;font:13px ui-monospace,Menlo,Consolas,monospace}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;background:rgba(79,209,197,.16);color:var(--accent);margin-left:6px;vertical-align:middle}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:13.5px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.g{background:#2fbf71}.q{background:#5aa6e6}.w{background:#e0a93b}.x{background:#e2603f}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--accent);font-size:14px}
+textarea{width:100%;height:84px;margin-top:8px;font:12px ui-monospace,Menlo,Consolas,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink)}
+.copy{margin-top:8px;font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.foot{color:var(--ink2);font-size:12.5px;margin-top:24px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>&#129360; Budget Pace Alerts <span class="pill">GOAL</span></h1>
+<p class="sub">A live watcher that pings you when any of your accounts crosses 25%, 50%, 75% or 100% of its daily ad budget.</p>
+
+<div class="card">
+<h2><span class="n">1</span>Drag this to your bookmarks bar</h2>
+<p><a class="drag" id="bm" href="{{BOOKMARKLET}}"><span class="ic">&#129360;</span>Budget Pace Alerts</a></p>
+<p class="hint">Drag the dark button up onto your Chrome bookmarks bar (press <code>&#8984;&#8679;B</code> to show it if hidden). Please don&#39;t click it on this page: dragging saves it, while clicking just runs it here, where there&#39;s no GOAL data.</p>
+<p class="hint">Updating? Delete the old bookmark first, then drag this one in. Your saved budget edits and settings carry over.</p>
+</div>
+
+<div class="card">
+<h2><span class="n">2</span>Use it</h2>
+<ol>
+<li>Open your GOAL admin dashboard and make sure you&#39;re signed in.</li>
+<li>Click the <b>Budget Pace Alerts</b> bookmark. A panel opens in the bottom-right corner and the tab icon turns into a &#129360; so you can spot it.</li>
+<li>First time only: click <b>Enable notifications</b> so alerts reach you even when you&#39;re on another tab.</li>
+<li>Leave the GOAL tab open. It re-checks every 5 minutes (adjustable) and alerts you as accounts cross each threshold.</li>
+</ol>
+<p class="hint">Click the bookmark again any time to reopen the panel. It only reads data. It never changes budgets, bids or anything else in GOAL.</p>
+</div>
+
+<div class="card">
+<h2><span class="n">3</span>What the panel shows</h2>
+<p style="margin:0 0 8px">Every account with a daily budget, sorted by how close it is to its cap. <b>Click an agency name to open it in GOAL</b> in a new tab. One alert per threshold per account per day; counters reset at midnight Pacific (GOAL&#39;s billing day).</p>
+<div class="legend">
+<span><i class="g"></i>under 50%</span><span><i class="q"></i>50 to 74%</span><span><i class="w"></i>75 to 99%</span><span><i class="x"></i>100%+</span>
+</div>
+<p class="hint"><b>Budgets are built in from your {{AS_OF_LONG}} pull.</b> If a budget is wrong or missing, type the correct daily number in the Budget cell. It&#39;s saved on this computer and used from then on (the box turns blue). Clear the box to go back to the built-in number. Accounts marked &ldquo;no budget set&rdquo; won&#39;t alert until they have a number. The panel shows a reminder once the built-in budgets are two weeks old.</p>
+</div>
+
+<div class="card">
+<h2><span class="n">&#9432;</span>Good to know</h2>
+<ol>
+<li><b>It only runs while the GOAL tab is open</b> in Chrome. Close the tab and it stops.</li>
+<li>Thresholds, check frequency and the chime are all adjustable at the bottom of the panel.</li>
+<li>The first check after you click the bookmark sets a baseline: accounts already past a threshold are noted in the log, not alerted. New crossings alert from then on.</li>
+<li>If you see &ldquo;GOAL session expired,&rdquo; sign back into GOAL and click the bookmark again.</li>
+</ol>
+<details><summary>Bookmark not saving by drag? Copy the code instead</summary>
+<p class="hint" style="margin-top:8px">Make a new bookmark (any page), edit it, and paste this as the URL:</p>
+<textarea id="code" readonly onclick="this.select()">{{BOOKMARKLET}}</textarea>
+<button class="copy" type="button" onclick="(function(b){var t=document.getElementById('code');(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(function(){b.textContent='Copied'},function(){t.select();document.execCommand('copy');b.textContent='Copied'});})(this)">Copy code</button>
+</details>
+</div>
+
+<p class="foot">Reads the GOAL admin analytics endpoint with your own signed-in session. Budgets as of {{AS_OF}} &middot; {{COUNT}} accounts &middot; build {{BUILD}}</p>
+</div>
+</body>
+</html>

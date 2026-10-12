@@ -1,0 +1,7 @@
+# Client data: never commit
+accounts.json
+dist/
+
+node_modules/
+dist-example/
+.DS_Store
