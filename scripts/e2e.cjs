@@ -1,8 +1,8 @@
 /*
  * End-to-end check of the built bookmarklet in headless Chromium against a
- * mocked GOAL API. Run after `npm run build:example`:
+ * mocked GOAL API. `npm run e2e` builds the example data first, or run it directly:
  *   node scripts/e2e.cjs [dist-example/bookmarklet.txt] [screenshot.png]
- * Requires playwright (not a project dependency).
+ * Requires playwright (not a project dependency): npm install --no-save playwright
  */
 const { chromium } = require("playwright");
 const fs = require("fs");
@@ -87,6 +87,25 @@ const ORIGIN = "https://admin.goal.test";
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("__bpw_v1")).over);
   assert.deepEqual(saved, { 1001: 1000 });
   assert.ok(await page.locator('input.bud.ov[data-id="1001"]').count(), "override is highlighted");
+
+  // 4b. A typo in a budget box leaves the saved override alone.
+  await input.fill("abc");
+  await input.press("Enter");
+  await page.waitForFunction(() => /not a dollar amount/.test(document.querySelector("#bpw-log").textContent));
+  await page.waitForFunction(() => document.querySelector('input.bud[data-id="1001"]').value === "1000");
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("__bpw_v1")).over), { 1001: 1000 });
+
+  // 4c. A 0 override on an account with no spend keeps its row, so it can be cleared again.
+  const idle = page.locator('input.bud[data-id="1002"]');
+  await idle.fill("0");
+  await idle.press("Enter");
+  await settle();
+  assert.equal(await page.locator('input.bud.ov[data-id="1002"]').count(), 1, "zeroed row stays visible");
+  await idle.fill("");
+  await idle.press("Enter");
+  await settle();
+  assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem("__bpw_v1")).over), { 1001: 1000 });
+  assert.equal(await page.locator('input.bud.ov[data-id="1002"]').count(), 0, "cleared override is no longer highlighted");
 
   // 5. Clicking the bookmark again reopens the same panel, no duplicates.
   await page.click("#bpw-min");

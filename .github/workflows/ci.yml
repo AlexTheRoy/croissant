@@ -1,5 +1,10 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -8,11 +13,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci
-      - run: npm test
-      - run: npm run build:example
+          cache: npm
       - name: Guard against committed client data
         run: |
           if git ls-files | grep -E '^(accounts\.json|dist/)'; then
             echo "Client data must not be committed"; exit 1
           fi
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:example
+      - name: End-to-end check in headless Chromium
+        run: |
+          npm install --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium
+          node scripts/e2e.cjs

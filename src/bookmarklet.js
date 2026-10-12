@@ -26,28 +26,38 @@ var PORTAL = "https://www.portal.checkoutgoal.com/dashboard";
 var STORE = "__bpw_v1"; // kept from v1 so saved overrides carry over
 var STALE_DAYS = 14;
 var INTERVALS = [2, 5, 10, 15, 30];
+var TIMEOUT_MS = 30000;
 
 var DEFAULTS = { every: 5, th: [25, 50, 75, 100], sound: true, over: {} };
 
-var S = (function () {
-  try {
-    return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(STORE) || "{}"));
-  } catch (e) {
-    return Object.assign({}, DEFAULTS);
-  }
-})();
-S.over = S.over || {};
-if (!Array.isArray(S.th) || !S.th.length) S.th = DEFAULTS.th.slice();
-if (!(S.every > 0)) S.every = DEFAULTS.every;
+function isObject(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
 
-var fired = {};
-try {
-  fired = JSON.parse(localStorage.getItem(STORE + "_fired") || "{}");
-} catch (e) {}
+// Saved state can be missing, from an older build, or hand edited: never trust its shape.
+function readStore(key) {
+  try {
+    var v = JSON.parse(localStorage.getItem(key) || "{}");
+    return isObject(v) ? v : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+var S = Object.assign({}, DEFAULTS, readStore(STORE));
+if (!isObject(S.over)) S.over = {};
+S.th = parseThresholds(Array.isArray(S.th) ? S.th.join(",") : "");
+if (!S.th.length) S.th = DEFAULTS.th.slice();
+S.every = +S.every;
+if (!(S.every >= 1 && S.every <= 1440)) S.every = DEFAULTS.every;
+
+var fired = readStore(STORE + "_fired");
 
 var panel, styleEl, rowsEl, errEl, logEl, sumEl;
 var rows = [];
-var lastCheck = null;
+var lastData = null; // rows from the last successful API response
+var lastCheck = null; // time of the last successful poll
+var lastAttempt = 0; // time of the last poll attempt, successful or not
 var lastError = null;
 var timer = null;
 var running = true; // false while paused
@@ -137,11 +147,15 @@ function lastFiredFor(id) {
 
 function recordFired(id, threshold) {
   var key = todayKey(TZ);
+  if (!isObject(fired[key])) fired[key] = {};
+  fired[key][id] = threshold;
+}
+
+function saveFired() {
+  var key = todayKey(TZ);
   Object.keys(fired).forEach(function (k) {
     if (k !== key) delete fired[k];
   });
-  fired[key] = fired[key] || {};
-  fired[key][id] = threshold;
   try {
     localStorage.setItem(STORE + "_fired", JSON.stringify(fired));
   } catch (e) {}
@@ -169,8 +183,47 @@ function daysSince(isoDate) {
 
 /* ---------- polling ---------- */
 
+function computeRows() {
+  var data = lastData || [];
+  var byId = {};
+  var ids = {};
+  Object.keys(ACCOUNTS).forEach(function (id) {
+    ids[id] = 1;
+  });
+  data.forEach(function (r) {
+    if (!r || r.account_id == null) return;
+    byId[r.account_id] = r;
+    ids[r.account_id] = 1;
+  });
+  return Object.keys(ids)
+    .map(function (id) {
+      var r = byId[id];
+      var spend = (r && +r.click_analytic_total_cost) || 0;
+      var bud = budgetFor(id);
+      return {
+        id: id,
+        name: nameFor(id, r && r.company_name),
+        link: portalLink(id, r),
+        spend: spend,
+        bud: bud,
+        pct: bud > 0 ? (spend / bud) * 100 : null,
+        over: S.over[id] != null,
+      };
+    })
+    .filter(function (r) {
+      // Keep overridden rows visible so a 0 override can always be cleared.
+      return r.bud > 0 || r.spend > 0 || r.over;
+    })
+    .sort(function (a, b) {
+      var pa = a.pct == null ? -1 : a.pct,
+        pb = b.pct == null ? -1 : b.pct;
+      return pb - pa || b.spend - a.spend;
+    });
+}
+
 function poll() {
   if (stopped || inFlight) return;
+  lastAttempt = Date.now();
   var token = readToken();
   if (!token) {
     lastError = "No GOAL admin session found on this page. Open the GOAL admin dashboard, sign in, then click the bookmark there.";
@@ -198,12 +251,20 @@ function poll() {
     group_by_params: ["account_id"],
     invoice: null,
   };
+  // Without a timeout a request that never settles would block every later check.
+  var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  var timedOut = false;
+  var timeout = setTimeout(function () {
+    timedOut = true;
+    if (ctl) ctl.abort();
+  }, TIMEOUT_MS);
   inFlight = true;
   setBusy(true);
   fetch(API, {
     method: "POST",
     headers: { Authorization: token, "admin-token": token, "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: ctl ? ctl.signal : undefined,
   })
     .then(function (res) {
       if (res.status === 401 || res.status === 403) throw new Error("GOAL session expired. Sign in again, then click the bookmark.");
@@ -212,50 +273,21 @@ function poll() {
     })
     .then(function (json) {
       if (stopped) return;
-      var data = (json && json.data) || [];
-      var byId = {};
-      data.forEach(function (r) {
-        byId[r.account_id] = r;
-      });
-      var ids = {};
-      Object.keys(ACCOUNTS).forEach(function (id) {
-        ids[id] = 1;
-      });
-      data.forEach(function (r) {
-        ids[r.account_id] = 1;
-      });
-      rows = Object.keys(ids)
-        .map(function (id) {
-          var r = byId[id];
-          var spend = (r && +r.click_analytic_total_cost) || 0;
-          var bud = budgetFor(id);
-          return {
-            id: id,
-            name: nameFor(id, r && r.company_name),
-            link: portalLink(id, r),
-            spend: spend,
-            bud: bud,
-            pct: bud > 0 ? (spend / bud) * 100 : null,
-            over: S.over[id] != null,
-          };
-        })
-        .filter(function (r) {
-          return r.bud > 0 || r.spend > 0;
-        })
-        .sort(function (a, b) {
-          var pa = a.pct == null ? -1 : a.pct,
-            pb = b.pct == null ? -1 : b.pct;
-          return pb - pa || b.spend - a.spend;
-        });
+      var data = json && json.data;
+      if (!Array.isArray(data)) throw new Error("GOAL API sent an unexpected response. Will retry on the next check.");
+      lastData = data;
+      rows = computeRows();
       lastCheck = new Date();
       lastError = null;
       checkAlerts();
     })
     .catch(function (e) {
       lastError = (e && e.message) || String(e);
-      if (/Failed to fetch|NetworkError/i.test(lastError)) lastError = "Couldn't reach GOAL (network). Will retry on the next check.";
+      if (timedOut) lastError = "GOAL took too long to respond. Will retry on the next check.";
+      else if (/Failed to fetch|NetworkError/i.test(lastError)) lastError = "Couldn't reach GOAL (network). Will retry on the next check.";
     })
     .then(function () {
+      clearTimeout(timeout);
       inFlight = false;
       setBusy(false);
       render();
@@ -271,6 +303,7 @@ function checkAlerts() {
     recordFired(r.id, top);
     hits.push({ row: r, top: top, crossed: crossed });
   });
+  if (hits.length) saveFired();
 
   if (!baselined) {
     baselined = true;
@@ -422,10 +455,21 @@ function build() {
     if (!el.classList.contains("bud")) return;
     var id = el.getAttribute("data-id");
     var v = parseMoney(el.value);
+    if (v == null && el.value.trim() !== "") {
+      // A typo must not wipe a saved override; only an empty box clears it.
+      log('"' + el.value.trim() + '" is not a dollar amount, so the budget for #' + id + " was left as it was.");
+      var cur = budgetFor(id);
+      el.value = cur > 0 ? cur : "";
+      render();
+      return;
+    }
     if (v == null) delete S.over[id];
     else S.over[id] = v;
     save();
     log(v == null ? "Budget override cleared for #" + id + "." : "Budget for #" + id + " set to " + money(v) + " (saved on this computer).");
+    // Show the edit right away, even if the next check fails; poll() then handles alerts.
+    if (lastData) rows = computeRows();
+    render();
     poll();
   });
   // Don't redraw the table under someone who is typing a budget.
@@ -550,7 +594,7 @@ function schedule() {
 
 // Background tabs throttle timers; catch up as soon as the tab is visible again.
 function onVisible() {
-  if (document.visibilityState === "visible" && running && !stopped && lastCheck && Date.now() - lastCheck.getTime() > 60000 * S.every) poll();
+  if (document.visibilityState === "visible" && running && !stopped && Date.now() - lastAttempt > 60000 * S.every) poll();
 }
 
 function setIcon() {

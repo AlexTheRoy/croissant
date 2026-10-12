@@ -5,19 +5,24 @@
 
 var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+var formatters = {};
+
 /** Calendar/clock parts for `date` as seen in time zone `tz`. */
 function tzParts(tz, date) {
-  var fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+  // Building a DateTimeFormat is slow and this runs several times per account.
+  var fmt =
+    formatters[tz] ||
+    (formatters[tz] = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }));
   var out = {};
   fmt.formatToParts(date).forEach(function (p) {
     out[p.type] = p.value;
@@ -98,10 +103,9 @@ function parseThresholds(str) {
 
 /** Parse a budget the user typed ("$1,250.50"). Returns null if empty/invalid. */
 function parseMoney(str) {
-  var clean = String(str == null ? "" : str).replace(/[^0-9.]/g, "");
-  if (clean === "") return null;
-  var n = parseFloat(clean);
-  return isFinite(n) && n >= 0 ? n : null;
+  var clean = String(str == null ? "" : str).replace(/[$,\s]/g, "");
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(clean)) return null;
+  return parseFloat(clean);
 }
 
 /** CSS class for a pace percentage. */

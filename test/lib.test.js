@@ -62,6 +62,22 @@ test("parseMoney handles $ and commas, empty means clear", () => {
   assert.equal(L.parseMoney("0"), 0);
   assert.equal(L.parseMoney("  "), null);
   assert.equal(L.parseMoney("abc"), null);
+  assert.equal(L.parseMoney(".5"), 0.5);
+  assert.equal(L.parseMoney("150."), 150);
+});
+
+test("parseMoney rejects input it would otherwise misread", () => {
+  assert.equal(L.parseMoney("-50"), null);
+  assert.equal(L.parseMoney("1e3"), null);
+  assert.equal(L.parseMoney("1.2.3"), null);
+  assert.equal(L.parseMoney("150 or so"), null);
+});
+
+test("tzParts stays correct across zones when formatters are reused", () => {
+  const at = new Date("2026-10-13T03:00:00Z");
+  assert.equal(L.todayKey(LA, at), "2026-10-12");
+  assert.equal(L.todayKey("UTC", at), "2026-10-13");
+  assert.equal(L.todayKey(LA, at), "2026-10-12");
 });
 
 test("paceClass buckets", () => {

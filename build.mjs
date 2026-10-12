@@ -30,7 +30,13 @@ if (!existsSync(configPath)) {
   process.exit(1);
 }
 
-const config = JSON.parse(readFileSync(configPath, "utf8"));
+let config;
+try {
+  config = JSON.parse(readFileSync(configPath, "utf8"));
+} catch (e) {
+  console.error(`${configPath} is not valid JSON: ${e.message}`);
+  process.exit(1);
+}
 validate(config);
 
 const lib = readFileSync(resolve(root, "src/lib.js"), "utf8").replace(
@@ -42,7 +48,8 @@ const app = readFileSync(resolve(root, "src/bookmarklet.js"), "utf8");
 // Embed config as a JSON literal. Escape "<" so names can never close a tag.
 const configLiteral = JSON.stringify(config).replace(/</g, "\\u003c");
 if (!app.includes("__CROISSANT_CONFIG__;")) throw new Error("Config placeholder missing from src/bookmarklet.js");
-const source = `(function(){\n${lib}\n${app.replace("__CROISSANT_CONFIG__;", configLiteral + ";")}\n})();`;
+// A replacer function, so "$" in an account name is not read as a replacement pattern.
+const source = `(function(){\n${lib}\n${app.replace("__CROISSANT_CONFIG__;", () => configLiteral + ";")}\n})();`;
 
 const result = await minify(source, {
   compress: { passes: 2 },
@@ -78,16 +85,25 @@ console.log(
 
 function validate(c) {
   const problems = [];
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(c.asOf || "")) problems.push('"asOf" must be YYYY-MM-DD');
-  if (c.timezone) {
+  const isObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  if (!isObject(c)) c = {};
+  const asOf = typeof c.asOf === "string" ? c.asOf : "";
+  // Round-trip through Date so impossible dates like 2026-13-45 are rejected too.
+  const parsed = new Date(asOf + "T00:00:00Z");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf) || isNaN(parsed) || parsed.toISOString().slice(0, 10) !== asOf)
+    problems.push('"asOf" must be a real date, YYYY-MM-DD');
+  if (c.timezone != null) {
     try {
+      if (typeof c.timezone !== "string") throw new Error("not a string");
       new Intl.DateTimeFormat("en-US", { timeZone: c.timezone });
     } catch {
-      problems.push(`"timezone" ${c.timezone} is not a valid IANA zone`);
+      problems.push(`"timezone" ${JSON.stringify(c.timezone)} is not a valid IANA zone`);
     }
   }
-  if (!c.accounts || typeof c.accounts !== "object") problems.push('"accounts" must be an object keyed by account id');
-  for (const [id, a] of Object.entries(c.accounts || {})) {
+  if (c.accountManagerId != null && typeof c.accountManagerId !== "number")
+    problems.push('"accountManagerId" must be a number or null');
+  if (!isObject(c.accounts)) problems.push('"accounts" must be an object keyed by account id');
+  for (const [id, a] of Object.entries(isObject(c.accounts) ? c.accounts : {})) {
     if (!/^\d+$/.test(id)) problems.push(`account id "${id}" should be numeric`);
     if (!a || typeof a.name !== "string" || !a.name) problems.push(`#${id}: missing "name"`);
     if (!Array.isArray(a?.budgets) || a.budgets.length !== 7 || a.budgets.some((b) => typeof b !== "number" || b < 0))
@@ -95,7 +111,7 @@ function validate(c) {
     if (a?.brandId != null && typeof a.brandId !== "number") problems.push(`#${id}: "brandId" must be a number or null`);
   }
   if (problems.length) {
-    console.error("accounts.json has problems:\n  - " + problems.join("\n  - "));
+    console.error(configPath + " has problems:\n  - " + problems.join("\n  - "));
     process.exit(1);
   }
 }

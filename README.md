@@ -15,7 +15,8 @@ It is **read only**. It never changes budgets, bids or anything else in GOAL.
 - Compares each account's spend with its daily budget for today's weekday.
   Budgets come from `accounts.json`, which is baked into the bookmarklet at
   build time. You can override any budget in the panel; overrides are saved
-  in that browser's local storage.
+  in that browser's local storage. Clear the box to go back to the built-in
+  number; anything that isn't a dollar amount is ignored.
 - One alert per threshold per account per day. The first check after
   launching records a baseline without alerting, so you don't get a burst of
   alerts for crossings that already happened.
@@ -75,5 +76,9 @@ one in. Saved overrides and settings carry over.
 ```bash
 npm test                     # unit tests
 npm run build:example        # build with example data into dist-example/
-node scripts/e2e.cjs         # needs playwright installed
+npm run e2e                  # build the example, then run it in headless Chromium
 ```
+
+The end-to-end check needs Playwright, which is not a project dependency:
+`npm install --no-save playwright && npx playwright install chromium`.
+CI runs all three on every push and pull request.

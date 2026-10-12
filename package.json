@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node build.mjs",
     "build:example": "node build.mjs --config accounts.example.json --out dist-example",
-    "test": "node --test"
+    "test": "node --test",
+    "e2e": "npm run build:example && node scripts/e2e.cjs"
   },
   "devDependencies": {
     "terser": "5.31.6"
