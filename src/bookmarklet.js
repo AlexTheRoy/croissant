@@ -193,7 +193,8 @@ function computeRows() {
   data.forEach(function (r) {
     if (!r || r.account_id == null) return;
     byId[r.account_id] = r;
-    ids[r.account_id] = 1;
+    // With onlyListedAccounts, accounts missing from accounts.json (e.g. not Active) never show.
+    if (!CFG.onlyListedAccounts || ACCOUNTS[r.account_id]) ids[r.account_id] = 1;
   });
   return Object.keys(ids)
     .map(function (id) {
@@ -575,7 +576,7 @@ function render() {
           '<div class="bar ' + cls + '"><i style="width:' + width.toFixed(1) + '%"></i></div></td>' +
           '<td class="r">' + money(r.spend) + "</td>" +
           '<td class="r"><input class="bud' + (r.over ? " ov" : "") + '" inputmode="decimal" data-id="' + esc(r.id) +
-          '" value="' + (r.bud > 0 ? r.bud : "") + '" placeholder="set" title="' +
+          '" value="' + (r.bud > 0 || r.over ? r.bud : "") + '" placeholder="set" title="' +
           (r.over ? "Your saved budget. Clear it to go back to the built-in number." : "Today's daily budget. Type a number to override it on this computer.") +
           '"></td>' +
           '<td class="r"><span class="pct ' + cls + '">' + (r.pct == null ? "no budget" : Math.round(r.pct) + "%") + "</span></td></tr>"

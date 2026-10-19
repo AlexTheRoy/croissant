@@ -102,6 +102,8 @@ function validate(c) {
   }
   if (c.accountManagerId != null && typeof c.accountManagerId !== "number")
     problems.push('"accountManagerId" must be a number or null');
+  if (c.onlyListedAccounts != null && typeof c.onlyListedAccounts !== "boolean")
+    problems.push('"onlyListedAccounts" must be true or false');
   if (!isObject(c.accounts)) problems.push('"accounts" must be an object keyed by account id');
   for (const [id, a] of Object.entries(isObject(c.accounts) ? c.accounts : {})) {
     if (!/^\d+$/.test(id)) problems.push(`account id "${id}" should be numeric`);

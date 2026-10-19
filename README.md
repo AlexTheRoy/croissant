@@ -57,6 +57,9 @@ Keep the real file locally and never commit it to this repository.
   `null` if unknown.
 - `accountManagerId` filters the API to your book of accounts. Use `null`
   for no filter.
+- `onlyListedAccounts: true` shows only the accounts in this file (for example,
+  just your Active accounts). Without it, any account GOAL reports spend for
+  also appears.
 - The panel shows a reminder once `asOf` is 14 or more days old.
 
 ## Build
